@@ -1,0 +1,16 @@
+{
+  "name": "hiclaw-log-search",
+  "version": "1.0.0",
+  "description": "HiClaw Log Search Service - Query and manage logs from all HiClaw components",
+  "main": "skill/server.js",
+  "scripts": {
+    "start": "node skill/server.js",
+    "install-service": "./scripts/install.sh"
+  },
+  "keywords": ["hiclaw", "log", "search", "monitoring", "dashboard"],
+  "author": "HiClaw Team",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
