@@ -3,20 +3,20 @@ import toast from 'react-hot-toast';
 import { useLogStore, usePreferencesStore } from '../stores/logStore';
 import { getLogs } from '../services/api';
 import { levelColors, formatTime, copyToClipboard } from '../utils/helpers';
-import type { LogEntry, LogLevel } from '../types';
+import type { LogEntry } from '../types';
 
 export default function LogStream() {
   const {
-    logs, setLogs, appendLogs, prependLog, clearLogs,
+    logs, setLogs, clearLogs,
     selectedComponent, filter, isLoading, wsConnected, isStreaming,
-    setIsStreaming, setWsConnected, wsPaused, setWsPaused
+    setIsStreaming
   } = useLogStore();
   const { preferences } = usePreferencesStore();
   
   const containerRef = useRef<HTMLDivElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);
   const [expandedLog, setExpandedLog] = useState<string | null>(null);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   
   // 加载日志
   const loadLogs = useCallback(async () => {

@@ -3,7 +3,7 @@
  */
 
 const { logCache } = require('../utils/cache');
-const logWatcher = require('../services/logWatcher');
+const { logWatcher } = require('../services/logWatcher');
 
 /**
  * 处理健康检查请求

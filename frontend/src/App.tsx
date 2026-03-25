@@ -9,7 +9,7 @@ import { useLogStore, usePreferencesStore } from './stores/logStore';
 import { getComponents } from './services/api';
 
 function App() {
-  const { components, setComponents, setSelectedComponent, selectedComponent } = useLogStore();
+  const { setComponents, setSelectedComponent, selectedComponent } = useLogStore();
   const { preferences, setPreferences } = usePreferencesStore();
   
   // 加载组件列表

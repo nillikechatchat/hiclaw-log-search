@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import ReactECharts from 'echarts-for-react';
 import { useLogStore } from '../stores/logStore';
 import { getStats } from '../services/api';
-import type { StatsData } from '../types';
 
 export default function Dashboard() {
   const { selectedComponent, stats, setStats } = useLogStore();
