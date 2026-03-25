@@ -40,15 +40,12 @@ interface LogStore {
   hasMore: boolean;
   page: number;
   
-  // WebSocket 状态
-  wsConnected: boolean;
-  wsPaused: boolean;
-  isStreaming: boolean;
+  // 认证状态
+  isAuthenticated: boolean;
   
   // Actions
   setLogs: (logs: LogEntry[]) => void;
   appendLogs: (logs: LogEntry[]) => void;
-  prependLog: (log: LogEntry) => void;
   clearLogs: () => void;
   setComponents: (components: LogComponent[]) => void;
   setSelectedComponent: (component: string) => void;
@@ -59,9 +56,8 @@ interface LogStore {
   setError: (error: string | null) => void;
   setHasMore: (hasMore: boolean) => void;
   setPage: (page: number) => void;
-  setWsConnected: (connected: boolean) => void;
-  setWsPaused: (paused: boolean) => void;
-  setIsStreaming: (streaming: boolean) => void;
+  setAuthenticated: (authenticated: boolean) => void;
+  logout: () => void;
 }
 
 export const useLogStore = create<LogStore>((set) => ({
@@ -74,13 +70,10 @@ export const useLogStore = create<LogStore>((set) => ({
   error: null,
   hasMore: false,
   page: 1,
-  wsConnected: false,
-  wsPaused: false,
-  isStreaming: false,
+  isAuthenticated: false,
   
   setLogs: (logs) => set({ logs }),
   appendLogs: (logs) => set((state) => ({ logs: [...state.logs, ...logs] })),
-  prependLog: (log) => set((state) => ({ logs: [log, ...state.logs] })),
   clearLogs: () => set({ logs: [], page: 1 }),
   setComponents: (components) => set({ components }),
   setSelectedComponent: (component) => set({ selectedComponent: component }),
@@ -91,9 +84,8 @@ export const useLogStore = create<LogStore>((set) => ({
   setError: (error) => set({ error }),
   setHasMore: (hasMore) => set({ hasMore }),
   setPage: (page) => set({ page }),
-  setWsConnected: (wsConnected) => set({ wsConnected }),
-  setWsPaused: (wsPaused) => set({ wsPaused }),
-  setIsStreaming: (isStreaming) => set({ isStreaming }),
+  setAuthenticated: (isAuthenticated) => set({ isAuthenticated }),
+  logout: () => set({ isAuthenticated: false }),
 }));
 
 // 搜索历史存储
@@ -113,7 +105,7 @@ export const useHistoryStore = create<HistoryStore>()(
           history: [
             { ...item, id: crypto.randomUUID(), timestamp: new Date().toISOString() },
             ...state.history,
-          ].slice(0, 50), // 保留最近 50 条
+          ].slice(0, 50),
         })),
       removeHistory: (id) =>
         set((state) => ({

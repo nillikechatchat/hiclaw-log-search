@@ -1,22 +1,20 @@
 {
   "name": "hiclaw-log-search",
-  "version": "2.0.0",
-  "description": "HiClaw Log Search Service - Advanced log query, real-time streaming, and analytics",
+  "version": "2.1.0",
+  "description": "HiClaw Log Search Service - Advanced log query with authentication, dashboard, and analytics",
   "main": "skill/server.js",
   "scripts": {
     "start": "node skill/server.js",
     "dev": "node skill/server.js",
     "install-service": "./scripts/install.sh",
-    "test": "node skill/test/test.js"
+    "test": "node skill/test/test.js",
+    "generate-token": "node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\""
   },
-  "keywords": ["hiclaw", "log", "search", "monitoring", "dashboard", "websocket", "realtime"],
+  "keywords": ["hiclaw", "log", "search", "monitoring", "dashboard", "authentication", "analytics"],
   "author": "HiClaw Team",
   "license": "MIT",
   "engines": {
     "node": ">=18.0.0"
-  },
-  "optionalDependencies": {
-    "ws": "^8.14.0"
   },
   "repository": {
     "type": "git",

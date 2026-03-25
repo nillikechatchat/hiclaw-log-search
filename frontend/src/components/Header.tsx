@@ -3,7 +3,7 @@ import { useLogStore, usePreferencesStore } from '../stores/logStore';
 import { formatSize } from '../utils/helpers';
 
 export default function Header() {
-  const { components, selectedComponent, logs, wsConnected, isStreaming } = useLogStore();
+  const { components, selectedComponent, logs, isAuthenticated, logout } = useLogStore();
   const { preferences, setPreferences } = usePreferencesStore();
   
   const selectedComp = components.find(c => c.id === selectedComponent);
@@ -15,7 +15,7 @@ export default function Header() {
   return (
     <header className="glass border-b border-dark-700/50 px-4 py-3">
       <div className="flex items-center justify-between">
-        {/* 左侧：标题和状态 */}
+        {/* 左侧：标题 */}
         <div className="flex items-center gap-4">
           <h1 className="text-xl font-bold flex items-center gap-2">
             <span className="text-2xl">📊</span>
@@ -23,21 +23,6 @@ export default function Header() {
               HiClaw Log Analyzer
             </span>
           </h1>
-          
-          {/* WebSocket 状态 */}
-          <div className="flex items-center gap-2 text-sm">
-            <span className={`status-dot ${wsConnected ? 'connected' : 'disconnected'}`} />
-            <span className="text-gray-400">
-              {wsConnected ? 'WebSocket 已连接' : 'WebSocket 断开'}
-            </span>
-          </div>
-          
-          {/* 流状态 */}
-          {isStreaming && (
-            <span className="badge badge-info animate-pulse">
-              🔴 实时流中
-            </span>
-          )}
         </div>
         
         {/* 中间：统计信息 */}
@@ -75,13 +60,15 @@ export default function Header() {
             ⚙️
           </button>
           
-          {/* 帮助 */}
-          <button
-            className="p-2 rounded-lg hover:bg-dark-700/50 transition-colors"
-            title="快捷键帮助 (?)"
-          >
-            ❓
-          </button>
+          {/* 登出 */}
+          {isAuthenticated && (
+            <button
+              onClick={logout}
+              className="px-3 py-1.5 rounded-lg hover:bg-red-600/20 text-red-400 transition-colors text-sm"
+            >
+              🚪 登出
+            </button>
+          )}
         </div>
       </div>
     </header>

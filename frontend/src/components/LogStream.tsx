@@ -2,51 +2,62 @@ import { useEffect, useCallback, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useLogStore, usePreferencesStore } from '../stores/logStore';
 import { getLogs } from '../services/api';
-import { levelColors, formatTime, copyToClipboard } from '../utils/helpers';
+import { levelColors, formatTime, copyToClipboard, generateId } from '../utils/helpers';
 import type { LogEntry } from '../types';
 
 export default function LogStream() {
   const {
     logs, setLogs, clearLogs,
-    selectedComponent, filter, isLoading, setLoading
+    selectedComponent, filter, isLoading, setLoading,
   } = useLogStore();
   const { preferences } = usePreferencesStore();
   
   const containerRef = useRef<HTMLDivElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);
   const [expandedLog, setExpandedLog] = useState<string | null>(null);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // 加载日志函数
+  const loadLogsRef = useRef<() => Promise<void>>();
   
-  // 加载日志
-  const loadLogs = useCallback(async () => {
+  loadLogsRef.current = async () => {
     if (!selectedComponent) return;
     
     setLoading(true);
     try {
       const data = await getLogs({ ...filter, component: selectedComponent }, preferences.maxLines);
-      setLogs(data.logs);
+      setLogs(data.logs.map((log: LogEntry) => ({ ...log, id: log.id || generateId() })));
+      toast.success(`加载 ${data.total} 条日志`);
     } catch (error) {
-      toast.error('加载日志失败');
+      toast.error('加载日志失败: ' + (error as Error).message);
     } finally {
       setLoading(false);
     }
-  }, [selectedComponent, filter, preferences.maxLines, setLogs, setLoading]);
+  };
+
+  const loadLogs = useCallback(() => {
+    loadLogsRef.current?.();
+  }, []);
+
+  // ========== 日志加载触发 ==========
   
-  // 初始加载
+  // 1. 组件/选择变化时加载
   useEffect(() => {
     if (selectedComponent) {
       loadLogs();
     }
   }, [selectedComponent, loadLogs]);
-  
-  // 级别或关键词变化后重新加载
+
+  // 2. 过滤器变化时重新加载
   useEffect(() => {
     if (selectedComponent) {
       loadLogs();
     }
-  }, [filter.level, filter.keyword, filter.regex, selectedComponent, loadLogs]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filter.level, filter.keyword, filter.regex]);
+
+  // ========== 自动刷新（轮询模式）==========
   
-  // 自动刷新（轮询模式）
   useEffect(() => {
     if (preferences.autoRefresh) {
       intervalRef.current = setInterval(loadLogs, preferences.refreshInterval);
@@ -58,9 +69,11 @@ export default function LogStream() {
     };
   }, [preferences.autoRefresh, preferences.refreshInterval, loadLogs]);
   
+  // ========== UI 交互 ==========
+  
   // 自动滚动到底部
   useEffect(() => {
-    if (autoScroll && containerRef.current) {
+    if (autoScroll && containerRef.current && logs.length > 0) {
       containerRef.current.scrollTop = containerRef.current.scrollHeight;
     }
   }, [logs, autoScroll]);
@@ -95,18 +108,18 @@ export default function LogStream() {
           </button>
           
           {/* 自动刷新 */}
-          <button
-            onClick={() => {
-              const newAutoRefresh = !preferences.autoRefresh;
-              usePreferencesStore.getState().setPreferences({ autoRefresh: newAutoRefresh });
-              toast.success(newAutoRefresh ? '自动刷新已开启' : '自动刷新已关闭');
-            }}
-            className={`px-3 py-1.5 rounded-lg text-sm ${
-              preferences.autoRefresh ? 'bg-green-600/20 text-green-400' : 'hover:bg-dark-700/50'
-            }`}
-          >
-            {preferences.autoRefresh ? '⏸ 暂停刷新' : '▶ 自动刷新'}
-          </button>
+          <label className="flex items-center gap-2 text-sm cursor-pointer">
+            <input
+              type="checkbox"
+              checked={preferences.autoRefresh}
+              onChange={(e) => {
+                const { setPreferences } = usePreferencesStore.getState();
+                setPreferences({ autoRefresh: e.target.checked });
+              }}
+              className="w-4 h-4"
+            />
+            <span>自动刷新 ({preferences.refreshInterval / 1000}s)</span>
+          </label>
           
           {/* 自动滚动 */}
           <button
@@ -263,16 +276,6 @@ function LogLine({ log, isExpanded, onToggle, onCopy, fontSize, showTimestamp, w
             title="复制"
           >
             📋
-          </button>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              // 查看上下文
-            }}
-            className="p-1 text-gray-400 hover:text-white text-xs"
-            title="查看上下文"
-          >
-            🔍
           </button>
         </div>
       </div>
