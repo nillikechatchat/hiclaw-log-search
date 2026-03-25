@@ -17,7 +17,7 @@ const { handleHealth } = require('./routes/health');
 const { handleComponents } = require('./routes/components');
 const { handleLogs, handleContext, handleExport } = require('./routes/logs');
 const { handleStats } = require('./routes/stats');
-const logWatcher = require('./services/logWatcher');
+const { logWatcher } = require('./services/logWatcher');
 
 // WebSocket 支持（如果 ws 模块可用）
 let WebSocket = null;
