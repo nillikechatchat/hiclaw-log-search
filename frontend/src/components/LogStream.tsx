@@ -2,14 +2,15 @@ import { useEffect, useCallback, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useLogStore, usePreferencesStore } from '../stores/logStore';
 import { getLogs } from '../services/api';
+import { useWebSocket } from '../hooks/useWebSocket';
 import { levelColors, formatTime, copyToClipboard } from '../utils/helpers';
 import type { LogEntry } from '../types';
 
 export default function LogStream() {
   const {
-    logs, setLogs, clearLogs,
+    logs, setLogs, clearLogs, appendLogs,
     selectedComponent, filter, isLoading, wsConnected, isStreaming,
-    setIsStreaming
+    setIsStreaming, setWsConnected
   } = useLogStore();
   const { preferences } = usePreferencesStore();
   
@@ -17,6 +18,20 @@ export default function LogStream() {
   const [autoScroll, setAutoScroll] = useState(true);
   const [expandedLog, setExpandedLog] = useState<string | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  
+  // WebSocket 连接
+  const wsUrl = `ws://${window.location.host}/log-search/ws`;
+  const { connect, disconnect, subscribe, unsubscribe } = useWebSocket({
+    url: wsUrl,
+    onLog: (log) => {
+      if (filter.level === 'ALL' || filter.level === log.level) {
+        appendLogs([log]);
+      }
+    },
+    onStatusChange: (status) => {
+      setWsConnected(status === 'connected');
+    },
+  });
   
   // 加载日志
   const loadLogs = useCallback(async () => {
@@ -36,6 +51,32 @@ export default function LogStream() {
       loadLogs();
     }
   }, [selectedComponent, loadLogs]);
+  
+  // 级别切换后重新加载
+  useEffect(() => {
+    if (selectedComponent && filter.level) {
+      loadLogs();
+    }
+  }, [filter.level, selectedComponent, loadLogs]);
+  
+  // WebSocket 连接管理
+  useEffect(() => {
+    connect();
+    return () => disconnect();
+  }, [connect, disconnect]);
+  
+  // 订阅组件
+  useEffect(() => {
+    if (wsConnected && selectedComponent) {
+      const wsFilter = filter.level !== 'ALL' ? { level: filter.level } : {};
+      subscribe(selectedComponent, wsFilter);
+    }
+    return () => {
+      if (wsConnected) {
+        unsubscribe();
+      }
+    };
+  }, [wsConnected, selectedComponent, filter.level, subscribe, unsubscribe]);
   
   // 自动刷新
   useEffect(() => {
