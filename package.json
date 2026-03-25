@@ -1,16 +1,25 @@
 {
   "name": "hiclaw-log-search",
-  "version": "1.0.0",
-  "description": "HiClaw Log Search Service - Query and manage logs from all HiClaw components",
+  "version": "2.0.0",
+  "description": "HiClaw Log Search Service - Advanced log query, real-time streaming, and analytics",
   "main": "skill/server.js",
   "scripts": {
     "start": "node skill/server.js",
-    "install-service": "./scripts/install.sh"
+    "dev": "node skill/server.js",
+    "install-service": "./scripts/install.sh",
+    "test": "node skill/test/test.js"
   },
-  "keywords": ["hiclaw", "log", "search", "monitoring", "dashboard"],
+  "keywords": ["hiclaw", "log", "search", "monitoring", "dashboard", "websocket", "realtime"],
   "author": "HiClaw Team",
   "license": "MIT",
   "engines": {
     "node": ">=18.0.0"
+  },
+  "optionalDependencies": {
+    "ws": "^8.14.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nillikechatchat/hiclaw-log-search.git"
   }
 }
