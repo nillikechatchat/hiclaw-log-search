@@ -3,14 +3,12 @@ import toast from 'react-hot-toast';
 import { useLogStore, usePreferencesStore } from '../stores/logStore';
 import { getLogs } from '../services/api';
 import { levelColors, formatTime, copyToClipboard, generateId } from '../utils/helpers';
-import { useWebSocket } from '../hooks/useWebSocket';
-import type { LogEntry, LogLevel } from '../types';
+import type { LogEntry } from '../types';
 
 export default function LogStream() {
   const {
-    logs, setLogs, prependLog, clearLogs,
+    logs, setLogs, clearLogs,
     selectedComponent, filter, isLoading, setLoading,
-    isStreaming, setIsStreaming, setWsConnected, wsPaused, setWsPaused
   } = useLogStore();
   const { preferences } = usePreferencesStore();
   
@@ -18,55 +16,11 @@ export default function LogStream() {
   const [autoScroll, setAutoScroll] = useState(true);
   const [expandedLog, setExpandedLog] = useState<string | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // 加载日志函数
+  const loadLogsRef = useRef<() => Promise<void>>();
   
-  // WebSocket 连接
-  const { status: wsStatus, connect, subscribe, unsubscribe, pause, resume } = useWebSocket({
-    onLog: (log, component) => {
-      if (component === selectedComponent) {
-        prependLog({ ...log, id: log.id || generateId() });
-      }
-    },
-    onStatusChange: (status) => {
-      setWsConnected(status === 'connected');
-    },
-  });
-
-  // 初始加载 + 组件变化时加载
-  useEffect(() => {
-    if (selectedComponent) {
-      loadLogs();
-    }
-  }, [selectedComponent]);
-
-  // 过滤器变化时重新加载日志 (Bug 2 修复)
-  useEffect(() => {
-    if (selectedComponent) {
-      loadLogs();
-    }
-    // 注意：loadLogs 依赖 filter，但这里只监听 filter 的具体属性变化
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filter.level, filter.keyword, filter.regex, filter.startTime, filter.endTime]);
-
-  // WebSocket 已在 useWebSocket hook 中自动连接，这里只处理订阅
-
-  // 订阅管理
-  useEffect(() => {
-    if (wsStatus === 'connected' && selectedComponent && isStreaming) {
-      subscribe(selectedComponent, {
-        level: filter.level !== 'ALL' ? filter.level : undefined,
-        search: filter.keyword || undefined,
-      });
-    }
-    
-    return () => {
-      if (selectedComponent) {
-        unsubscribe(selectedComponent);
-      }
-    };
-  }, [wsStatus, selectedComponent, isStreaming, filter.level, filter.keyword, subscribe, unsubscribe]);
-  
-  // 加载日志
-  const loadLogs = useCallback(async () => {
+  loadLogsRef.current = async () => {
     if (!selectedComponent) return;
     
     setLoading(true);
@@ -79,11 +33,33 @@ export default function LogStream() {
     } finally {
       setLoading(false);
     }
-  }, [selectedComponent, filter, preferences.maxLines, setLogs, setLoading]);
+  };
+
+  const loadLogs = useCallback(() => {
+    loadLogsRef.current?.();
+  }, []);
+
+  // ========== 日志加载触发 ==========
   
-  // 自动刷新（非 WebSocket 模式）
+  // 1. 组件/选择变化时加载
   useEffect(() => {
-    if (preferences.autoRefresh && !isStreaming) {
+    if (selectedComponent) {
+      loadLogs();
+    }
+  }, [selectedComponent, loadLogs]);
+
+  // 2. 过滤器变化时重新加载
+  useEffect(() => {
+    if (selectedComponent) {
+      loadLogs();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filter.level, filter.keyword, filter.regex]);
+
+  // ========== 自动刷新（轮询模式）==========
+  
+  useEffect(() => {
+    if (preferences.autoRefresh) {
       intervalRef.current = setInterval(loadLogs, preferences.refreshInterval);
     }
     return () => {
@@ -91,7 +67,9 @@ export default function LogStream() {
         clearInterval(intervalRef.current);
       }
     };
-  }, [preferences.autoRefresh, preferences.refreshInterval, isStreaming, loadLogs]);
+  }, [preferences.autoRefresh, preferences.refreshInterval, loadLogs]);
+  
+  // ========== UI 交互 ==========
   
   // 自动滚动到底部
   useEffect(() => {
@@ -114,25 +92,6 @@ export default function LogStream() {
       toast.success('已复制到剪贴板');
     }
   }, []);
-  
-  // 切换实时流
-  const toggleStreaming = useCallback(() => {
-    if (wsStatus === 'connected') {
-      if (isStreaming) {
-        pause();
-        setIsStreaming(false);
-        setWsPaused(false);
-        toast.success('实时日志流已暂停');
-      } else {
-        resume();
-        setIsStreaming(true);
-        setWsPaused(false);
-        toast.success('实时日志流已开启');
-      }
-    } else {
-      toast.error('WebSocket 未连接，请稍后重试');
-    }
-  }, [wsStatus, isStreaming, pause, resume, setIsStreaming, setWsPaused]);
 
   return (
     <div className="flex flex-col h-full bg-dark-900">
@@ -148,19 +107,19 @@ export default function LogStream() {
             {isLoading ? '⏳ 加载中...' : '🔄 刷新'}
           </button>
           
-          {/* 实时流按钮 */}
-          <button
-            onClick={toggleStreaming}
-            className={`px-3 py-1.5 rounded-lg text-sm flex items-center gap-2 ${
-              isStreaming
-                ? 'bg-red-600/20 text-red-400 animate-pulse'
-                : wsStatus === 'connected'
-                  ? 'bg-green-600/20 text-green-400'
-                  : 'hover:bg-dark-700/50'
-            }`}
-          >
-            {isStreaming ? '⏸ 暂停实时流' : wsStatus === 'connected' ? '▶ 开启实时流' : '⏳ 连接中...'}
-          </button>
+          {/* 自动刷新 */}
+          <label className="flex items-center gap-2 text-sm cursor-pointer">
+            <input
+              type="checkbox"
+              checked={preferences.autoRefresh}
+              onChange={(e) => {
+                const { setPreferences } = usePreferencesStore.getState();
+                setPreferences({ autoRefresh: e.target.checked });
+              }}
+              className="w-4 h-4"
+            />
+            <span>自动刷新 ({preferences.refreshInterval / 1000}s)</span>
+          </label>
           
           {/* 自动滚动 */}
           <button
@@ -184,17 +143,8 @@ export default function LogStream() {
           </button>
         </div>
         
-        <div className="flex items-center gap-4">
-          {/* WebSocket 状态指示 */}
-          <div className="flex items-center gap-2 text-sm">
-            <span className={`status-dot ${wsStatus === 'connected' ? 'connected' : wsStatus === 'connecting' ? 'connecting' : 'disconnected'}`} />
-            <span className="text-gray-400">
-              {wsStatus === 'connected' ? 'WS 已连接' : wsStatus === 'connecting' ? 'WS 连接中' : 'WS 断开'}
-            </span>
-          </div>
-          <div className="text-sm text-gray-400">
-            {logs.length.toLocaleString()} 条日志
-          </div>
+        <div className="text-sm text-gray-400">
+          {logs.length.toLocaleString()} 条日志
         </div>
       </div>
       
@@ -326,16 +276,6 @@ function LogLine({ log, isExpanded, onToggle, onCopy, fontSize, showTimestamp, w
             title="复制"
           >
             📋
-          </button>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              // 查看上下文
-            }}
-            className="p-1 text-gray-400 hover:text-white text-xs"
-            title="查看上下文"
-          >
-            🔍
           </button>
         </div>
       </div>

@@ -47,23 +47,6 @@ export interface SearchHistory {
   filter: Partial<SearchFilter>;
 }
 
-// WebSocket 消息
-export interface WSMessage {
-  type: 'log' | 'stats' | 'heartbeat' | 'connected' | 'error';
-  data?: LogEntry | StatsData | string;
-}
-
-// WebSocket 订阅
-export interface WSSubscribe {
-  action: 'subscribe' | 'unsubscribe' | 'pause' | 'resume';
-  component?: string;
-  filters?: {
-    level?: LogLevel;
-    keyword?: string;
-    regex?: string;
-  };
-}
-
 // 统计数据
 export interface StatsData {
   component: string;
