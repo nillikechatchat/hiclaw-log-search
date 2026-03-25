@@ -2,15 +2,13 @@ import { useEffect, useCallback, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useLogStore, usePreferencesStore } from '../stores/logStore';
 import { getLogs } from '../services/api';
-import { useWebSocket } from '../hooks/useWebSocket';
 import { levelColors, formatTime, copyToClipboard } from '../utils/helpers';
 import type { LogEntry } from '../types';
 
 export default function LogStream() {
   const {
-    logs, setLogs, clearLogs, appendLogs,
-    selectedComponent, filter, isLoading, wsConnected, isStreaming,
-    setIsStreaming, setWsConnected
+    logs, setLogs, clearLogs,
+    selectedComponent, filter, isLoading, setLoading
   } = useLogStore();
   const { preferences } = usePreferencesStore();
   
@@ -19,31 +17,20 @@ export default function LogStream() {
   const [expandedLog, setExpandedLog] = useState<string | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   
-  // WebSocket 连接
-  const wsUrl = `ws://${window.location.host}/log-search/ws`;
-  useWebSocket({
-    url: wsUrl,
-    onLog: (log) => {
-      if (filter.level === 'ALL' || filter.level === log.level) {
-        appendLogs([log]);
-      }
-    },
-    onStatusChange: (status) => {
-      setWsConnected(status === 'connected');
-    },
-  });
-  
   // 加载日志
   const loadLogs = useCallback(async () => {
     if (!selectedComponent) return;
     
+    setLoading(true);
     try {
       const data = await getLogs({ ...filter, component: selectedComponent }, preferences.maxLines);
       setLogs(data.logs);
     } catch (error) {
       toast.error('加载日志失败');
+    } finally {
+      setLoading(false);
     }
-  }, [selectedComponent, filter, preferences.maxLines, setLogs]);
+  }, [selectedComponent, filter, preferences.maxLines, setLogs, setLoading]);
   
   // 初始加载
   useEffect(() => {
@@ -52,16 +39,16 @@ export default function LogStream() {
     }
   }, [selectedComponent, loadLogs]);
   
-  // 级别切换后重新加载
+  // 级别或关键词变化后重新加载
   useEffect(() => {
-    if (selectedComponent && filter.level) {
+    if (selectedComponent) {
       loadLogs();
     }
-  }, [filter.level, selectedComponent, loadLogs]);
+  }, [filter.level, filter.keyword, filter.regex, selectedComponent, loadLogs]);
   
-  // 自动刷新
+  // 自动刷新（轮询模式）
   useEffect(() => {
-    if (preferences.autoRefresh && !wsConnected) {
+    if (preferences.autoRefresh) {
       intervalRef.current = setInterval(loadLogs, preferences.refreshInterval);
     }
     return () => {
@@ -69,7 +56,7 @@ export default function LogStream() {
         clearInterval(intervalRef.current);
       }
     };
-  }, [preferences.autoRefresh, preferences.refreshInterval, wsConnected, loadLogs]);
+  }, [preferences.autoRefresh, preferences.refreshInterval, loadLogs]);
   
   // 自动滚动到底部
   useEffect(() => {
@@ -92,20 +79,6 @@ export default function LogStream() {
       toast.success('已复制到剪贴板');
     }
   }, []);
-  
-  // 切换实时流
-  const toggleStreaming = useCallback(() => {
-    if (wsConnected) {
-      setIsStreaming(!isStreaming);
-      if (!isStreaming) {
-        toast.success('实时日志流已开启');
-      } else {
-        toast.success('实时日志流已暂停');
-      }
-    } else {
-      toast.error('WebSocket 未连接，无法开启实时流');
-    }
-  }, [wsConnected, isStreaming, setIsStreaming]);
 
   return (
     <div className="flex flex-col h-full bg-dark-900">
@@ -121,16 +94,18 @@ export default function LogStream() {
             {isLoading ? '⏳ 加载中...' : '🔄 刷新'}
           </button>
           
-          {/* 实时流按钮 */}
+          {/* 自动刷新 */}
           <button
-            onClick={toggleStreaming}
-            className={`px-3 py-1.5 rounded-lg text-sm flex items-center gap-2 ${
-              isStreaming
-                ? 'bg-red-600/20 text-red-400 animate-pulse'
-                : 'hover:bg-dark-700/50'
+            onClick={() => {
+              const newAutoRefresh = !preferences.autoRefresh;
+              usePreferencesStore.getState().setPreferences({ autoRefresh: newAutoRefresh });
+              toast.success(newAutoRefresh ? '自动刷新已开启' : '自动刷新已关闭');
+            }}
+            className={`px-3 py-1.5 rounded-lg text-sm ${
+              preferences.autoRefresh ? 'bg-green-600/20 text-green-400' : 'hover:bg-dark-700/50'
             }`}
           >
-            {isStreaming ? '⏸ 暂停实时流' : '▶ 开启实时流'}
+            {preferences.autoRefresh ? '⏸ 暂停刷新' : '▶ 自动刷新'}
           </button>
           
           {/* 自动滚动 */}

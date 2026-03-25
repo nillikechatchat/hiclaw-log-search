@@ -11,6 +11,8 @@ const COMPONENTS = {
   "higress-pilot": { name: "Higress Pilot", file: "/var/log/hiclaw/higress-pilot.log" },
   "higress-console": { name: "Higress Console", file: "/var/log/hiclaw/higress-console.log" },
   "higress-apiserver": { name: "Higress API Server", file: "/var/log/hiclaw/higress-apiserver.log" },
+  "openclaw-gateway": { name: "OpenClaw Gateway", file: "/var/log/hiclaw/manager-agent.log" },
+  "openclaw-gateway-error": { name: "OpenClaw Gateway Error", file: "/var/log/hiclaw/manager-agent-error.log" },
   "manager-agent": { name: "Manager Agent", file: "/var/log/hiclaw/manager-agent.log" },
   "mc-mirror": { name: "MinIO Mirror", file: "/var/log/hiclaw/mc-mirror.log" },
   "minio": { name: "MinIO", file: "/var/log/hiclaw/minio.log" },
