@@ -135,10 +135,11 @@ export function useWebSocket({
 
   // 初始化连接
   useEffect(() => {
+    connect();
     return () => {
       disconnect();
     };
-  }, [disconnect]);
+  }, [connect, disconnect]);
 
   return {
     status,

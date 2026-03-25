@@ -21,7 +21,7 @@ export default function LogStream() {
   
   // WebSocket 连接
   const wsUrl = `ws://${window.location.host}/log-search/ws`;
-  const { connect, disconnect, subscribe, unsubscribe } = useWebSocket({
+  useWebSocket({
     url: wsUrl,
     onLog: (log) => {
       if (filter.level === 'ALL' || filter.level === log.level) {
@@ -58,25 +58,6 @@ export default function LogStream() {
       loadLogs();
     }
   }, [filter.level, selectedComponent, loadLogs]);
-  
-  // WebSocket 连接管理
-  useEffect(() => {
-    connect();
-    return () => disconnect();
-  }, [connect, disconnect]);
-  
-  // 订阅组件
-  useEffect(() => {
-    if (wsConnected && selectedComponent) {
-      const wsFilter = filter.level !== 'ALL' ? { level: filter.level } : {};
-      subscribe(selectedComponent, wsFilter);
-    }
-    return () => {
-      if (wsConnected) {
-        unsubscribe();
-      }
-    };
-  }, [wsConnected, selectedComponent, filter.level, subscribe, unsubscribe]);
   
   // 自动刷新
   useEffect(() => {
