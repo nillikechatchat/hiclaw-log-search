@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HiClaw 日志查询</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background: #1a1a2e; }
+    .log-container { background: #16213e; }
+    .log-line { 
+      font-family: "JetBrains Mono", "Fira Code", Consolas, monospace; 
+      font-size: 13px; 
+      padding: 8px 12px;
+      margin: 2px 0;
+      border-radius: 4px;
+      border-left: 4px solid;
+    }
+    .log-ERROR { 
+      background: #2d1f1f; 
+      border-color: #ff4757;
+    }
+    .log-ERROR .level { color: #ff4757; }
+    
+    .log-WARN { 
+      background: #2d2a1f; 
+      border-color: #ffa502;
+    }
+    .log-WARN .level { color: #ffa502; }
+    
+    .log-INFO { 
+      background: #1f2d2d; 
+      border-color: #3498db;
+    }
+    .log-INFO .level { color: #3498db; }
+    
+    .log-DEBUG { 
+      background: #1f1f2d; 
+      border-color: #9b59b6;
+    }
+    .log-DEBUG .level { color: #9b59b6; }
+    
+    .timestamp { color: #7f8c8d; }
+    .log-message { color: #ecf0f1; white-space: pre-wrap; word-break: break-all; line-height: 1.5; }
+    
+    .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+    .stats-bar { background: #0f3460; }
+    
+    select, input { 
+      background: #1a1a2e !important; 
+      border: 1px solid #3498db !important;
+      color: #ecf0f1 !important;
+    }
+    
+    select:focus, input:focus {
+      outline: none;
+      border-color: #3498db !important;
+      box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.3);
+    }
+    
+    button {
+      background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+      transition: all 0.2s;
+    }
+    button:hover {
+      background: linear-gradient(135deg, #2980b9 0%, #1f6dad 100%);
+      transform: translateY(-1px);
+    }
+    
+    .component-badge {
+      background: #0f3460;
+      border: 1px solid #3498db;
+    }
+    
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #1a1a2e; }
+    ::-webkit-scrollbar-thumb { background: #3498db; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #2980b9; }
+  </style>
+</head>
+<body class="text-gray-100 min-h-screen">
+  <div id="app" class="flex flex-col h-screen">
+    <!-- Header -->
+    <header class="header px-4 py-4 shadow-lg">
+      <div class="flex items-center justify-between flex-wrap gap-3">
+        <div class="flex items-center space-x-4">
+          <h1 class="text-xl font-bold flex items-center gap-2">
+            <span class="text-2xl">📋</span>
+            <span>HiClaw 日志查询系统</span>
+          </h1>
+          <span id="status" class="text-sm text-white/70"></span>
+        </div>
+        <div class="flex items-center space-x-3 flex-wrap gap-2">
+          <select id="component" class="rounded px-3 py-2 text-sm min-w-48">
+            <option value="">加载中...</option>
+          </select>
+          <select id="level" class="rounded px-3 py-2 text-sm">
+            <option value="ALL">全部级别</option>
+            <option value="ERROR">🔴 ERROR</option>
+            <option value="WARN">🟡 WARN</option>
+            <option value="INFO">🔵 INFO</option>
+            <option value="DEBUG">🟣 DEBUG</option>
+          </select>
+          <input id="search" type="text" placeholder="🔍 搜索关键词..." class="rounded px-3 py-2 text-sm w-48">
+          <button onclick="loadLogs()" class="px-4 py-2 rounded text-sm font-medium">🔄 刷新</button>
+          <label class="flex items-center text-sm cursor-pointer">
+            <input type="checkbox" id="autoRefresh" class="mr-2 w-4 h-4">
+            <span>自动刷新</span>
+          </label>
+        </div>
+      </div>
+    </header>
+    
+    <!-- Stats -->
+    <div class="stats-bar px-4 py-3 flex items-center gap-6 text-sm border-b border-blue-900/50">
+      <div class="flex items-center gap-2">
+        <span class="text-gray-400">组件:</span>
+        <span id="compName" class="text-blue-400 font-medium">-</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="text-gray-400">日志数:</span>
+        <span id="logCount" class="text-green-400 font-bold">0</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="text-gray-400">文件大小:</span>
+        <span id="fileSize" class="text-yellow-400">-</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="text-gray-400">最后更新:</span>
+        <span id="lastUpdate" class="text-purple-400">-</span>
+      </div>
+    </div>
+    
+    <!-- Logs -->
+    <div id="logs" class="flex-1 overflow-auto log-container p-3">
+      <div class="text-center text-gray-500 py-20 text-lg">
+        <div class="text-6xl mb-4">📊</div>
+        <div>请选择组件并点击刷新查看日志</div>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    const API_BASE = "/log-search/api";
+    let refreshInterval = null;
+    let componentSizes = {};
+    
+    async function loadComponents() {
+      try {
+        const res = await fetch(API_BASE + "/components");
+        const data = await res.json();
+        const select = document.getElementById("component");
+        
+        data.components.forEach(c => componentSizes[c.id] = c.size);
+        
+        select.innerHTML = data.components.map(c => 
+          `<option value="${c.id}">${c.name} (${formatSize(c.size)})</option>`
+        ).join("");
+        
+        document.getElementById("status").textContent = `✓ ${data.components.length} 个日志组件`;
+      } catch (e) {
+        document.getElementById("status").textContent = "❌ 加载组件失败";
+      }
+    }
+    
+    async function loadLogs() {
+      const component = document.getElementById("component").value;
+      const level = document.getElementById("level").value;
+      const search = document.getElementById("search").value;
+      
+      if (!component) return;
+      
+      const selectedOption = document.getElementById("component").selectedOptions[0];
+      document.getElementById("compName").textContent = selectedOption.text.split(" (")[0];
+      document.getElementById("fileSize").textContent = formatSize(componentSizes[component] || 0);
+      
+      try {
+        const params = new URLSearchParams({ component, level, search, lines: 1000 });
+        const res = await fetch(API_BASE + "/logs?" + params);
+        const data = await res.json();
+        
+        document.getElementById("logCount").textContent = data.total.toLocaleString();
+        document.getElementById("lastUpdate").textContent = new Date().toLocaleTimeString();
+        
+        const logsDiv = document.getElementById("logs");
+        if (data.logs.length === 0) {
+          logsDiv.innerHTML = `
+            <div class="text-center text-gray-500 py-20">
+              <div class="text-6xl mb-4">🔍</div>
+              <div>没有找到匹配的日志</div>
+            </div>`;
+          return;
+        }
+        
+        logsDiv.innerHTML = data.logs.map((log, idx) => `
+          <div class="log-line log-${log.level}">
+            <span class="timestamp mr-3">${log.timestamp}</span>
+            <span class="level font-bold mr-3">[${log.level}]</span>
+            <span class="log-message">${escapeHtml(log.message)}</span>
+          </div>
+        `).join("");
+        
+        logsDiv.scrollTop = logsDiv.scrollHeight;
+      } catch (e) {
+        document.getElementById("logs").innerHTML = `
+          <div class="text-center py-20">
+            <div class="text-6xl mb-4 text-red-500">⚠️</div>
+            <div class="text-red-400">加载失败: ${e.message}</div>
+          </div>`;
+      }
+    }
+    
+    function formatSize(bytes) {
+      if (!bytes || bytes === 0) return "0 B";
+      if (bytes < 1024) return bytes + " B";
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+      if (bytes < 1024 * 1024 * 1024) return (bytes / 1024 / 1024).toFixed(2) + " MB";
+      return (bytes / 1024 / 1024 / 1024).toFixed(2) + " GB";
+    }
+    
+    function escapeHtml(str) {
+      return str
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/\n/g, "<br>");
+    }
+    
+    document.getElementById("autoRefresh").addEventListener("change", function() {
+      if (this.checked) {
+        refreshInterval = setInterval(loadLogs, 3000);
+      } else {
+        clearInterval(refreshInterval);
+      }
+    });
+    
+    document.getElementById("component").addEventListener("change", loadLogs);
+    document.getElementById("level").addEventListener("change", loadLogs);
+    document.getElementById("search").addEventListener("keypress", e => { 
+      if (e.key === "Enter") loadLogs(); 
+    });
+    
+    // 初始化
+    loadComponents().then(() => {
+      // 默认加载第一个组件
+      setTimeout(loadLogs, 500);
+    });
+  </script>
+</body>
+</html>

@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react';
 import ReactECharts from 'echarts-for-react';
 import { useLogStore } from '../stores/logStore';
 import { getStats, getSystemOverview, deleteLogs } from '../services/api';
-import type { StatsData, SystemOverview, WorkerStatus } from '../services/api';
+import type { SystemOverview, WorkerStatus } from '../services/api';
+import type { StatsData } from '@/types';
 import toast from 'react-hot-toast';
+import SystemManager from './SystemManager';
 
 export default function Dashboard() {
   const { selectedComponent, stats, setStats } = useLogStore();
@@ -190,6 +192,9 @@ function SystemStatusPanel({
           🗑️ 清空当前组件日志
         </button>
       </div>
+
+      {/* 系统管理 - 升级/卸载 */}
+      <SystemManager />
     </div>
   );
 }
@@ -352,7 +357,7 @@ function LogStatsPanel({ stats, loading }: { stats: StatsData | null; loading: b
         <div className="bg-dark-800/50 rounded-lg p-3">
           <h4 className="text-sm text-gray-400 mb-2">高频错误 Top 5</h4>
           <div className="space-y-2">
-            {stats.topErrors.slice(0, 5).map((error, index) => (
+            {stats.topErrors.slice(0, 5).map((error: { message: string; count: number }, index: number) => (
               <div key={index} className="flex items-start gap-2 text-xs">
                 <span className="text-red-400 font-mono">{error.count}x</span>
                 <span className="text-gray-300 truncate flex-1" title={error.message}>

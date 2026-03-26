@@ -1,7 +1,7 @@
 {
   "name": "hiclaw-log-search",
-  "version": "2.1.0",
-  "description": "HiClaw Log Search Service - Advanced log query with authentication, dashboard, and analytics",
+  "version": "2.2.0",
+  "description": "HiClaw Log Search Service - Log query, monitoring, and system management with upgrade/uninstall",
   "main": "skill/server.js",
   "scripts": {
     "start": "node skill/server.js",
@@ -10,7 +10,7 @@
     "test": "node skill/test/test.js",
     "generate-token": "node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\""
   },
-  "keywords": ["hiclaw", "log", "search", "monitoring", "dashboard", "authentication", "analytics"],
+  "keywords": ["hiclaw", "log", "search", "monitoring", "dashboard", "authentication", "analytics", "upgrade", "uninstall"],
   "author": "HiClaw Team",
   "license": "MIT",
   "engines": {

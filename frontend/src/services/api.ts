@@ -243,3 +243,25 @@ export async function getWorkers(): Promise<{ workers: WorkerStatus[] }> {
   const data = await getWorkersStatus();
   return { workers: data.workers };
 }
+
+// ========== 系统管理 API ==========
+
+// 获取版本信息
+export async function getVersion(): Promise<{ version: string; installDir: string; nodeVersion: string }> {
+  return request(`${API_BASE}/system/version`);
+}
+
+// 检查更新
+export async function checkUpdate(): Promise<{ current: string; latest: string; hasUpdate: boolean; releaseNotes?: string }> {
+  return request(`${API_BASE}/system/upgrade/check`);
+}
+
+// 执行升级
+export async function upgrade(): Promise<{ success: boolean; message: string }> {
+  return request(`${API_BASE}/system/upgrade/execute`, { method: 'POST' });
+}
+
+// 执行卸载
+export async function uninstall(confirm: string): Promise<{ success: boolean; message: string }> {
+  return request(`${API_BASE}/system/uninstall?confirm=${encodeURIComponent(confirm)}`);
+}
