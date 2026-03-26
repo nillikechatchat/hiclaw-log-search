@@ -33,13 +33,39 @@ function tryParseJson(line, lineNumber) {
     const parsed = JSON.parse(line);
     
     // 提取时间戳
-    let timestamp = parsed.timestamp || parsed.time || parsed['@timestamp'] || new Date().toISOString();
+    let timestamp = parsed.timestamp || parsed.time || parsed['@timestamp'] || parsed.start_time || new Date().toISOString();
     
-    // 提取级别
-    let level = normalizeLevel(parsed.level || parsed.severity || parsed.lvl || 'INFO');
+    // 提取级别 - 优先使用显式级别，其次根据 response_code 推断
+    let level = parsed.level || parsed.severity || parsed.lvl;
     
-    // 提取消息
-    let message = parsed.message || parsed.msg || parsed.message || line;
+    if (!level) {
+      // 对于 Envoy/Higress 访问日志，根据 response_code 推断级别
+      const responseCode = parseInt(parsed.response_code || parsed.status || parsed.responseStatus || parsed.code);
+      if (responseCode) {
+        if (responseCode >= 500) {
+          level = 'ERROR';
+        } else if (responseCode >= 400) {
+          level = 'WARN';
+        } else {
+          level = 'INFO';
+        }
+      } else {
+        level = 'INFO';
+      }
+    }
+    
+    level = normalizeLevel(level);
+    
+    // 提取消息 - 构建更有意义的消息
+    let message;
+    if (parsed.message || parsed.msg) {
+      message = parsed.message || parsed.msg;
+    } else if (parsed.method && parsed.path) {
+      // Envoy/Higress 访问日志格式
+      message = `${parsed.method} ${parsed.path} → ${parsed.response_code || parsed.status || '?'}`;
+    } else {
+      message = line;
+    }
     
     // 保留其他字段作为额外数据
     const extra = { ...parsed };

@@ -10,15 +10,18 @@ import { useLogStore, usePreferencesStore } from './stores/logStore';
 import { getComponents, isAuthenticated } from './services/api';
 
 function App() {
-  const { setComponents, setSelectedComponent, selectedComponent, isAuthenticated: isAuth } = useLogStore();
+  const { setComponents, setSelectedComponent, selectedComponent } = useLogStore();
   const { preferences, setPreferences } = usePreferencesStore();
-  const [showLogin, setShowLogin] = useState(true);
+  const [showLogin, setShowLogin] = useState(!isAuthenticated());
   
-  // 检查认证状态
+  // 检查认证状态 - 只在初始化时执行一次
   useEffect(() => {
     const auth = isAuthenticated();
-    setShowLogin(!auth);
-  }, [isAuth]);
+    if (auth) {
+      setShowLogin(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // 加载组件列表
   useEffect(() => {

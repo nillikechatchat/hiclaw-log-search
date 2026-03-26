@@ -26,7 +26,7 @@ export default function LoginPage({ onSuccess }: LoginPageProps) {
       const result = await verifyToken(token.trim());
       
       if (result.success) {
-        setAuthenticated(true);
+        setAuthenticated(true, token.trim());
         toast.success('验证成功！');
         onSuccess();
       } else {

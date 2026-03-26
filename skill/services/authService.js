@@ -5,6 +5,8 @@
  * 1. 宿主机执行命令生成密钥，写入指定文件
  * 2. 后端读取密钥并验证
  * 3. 验证成功后密钥失效
+ * 
+ * v2.2 新增：同时支持静态 Token
  */
 
 const fs = require('fs');
@@ -21,6 +23,10 @@ const AUTH_CONFIG = {
   enabled: process.env.LOG_SEARCH_AUTH_ENABLED !== 'false',
   // 会话有效期（毫秒），默认 24 小时
   sessionTTL: 24 * 60 * 60 * 1000,
+  // 静态 Token 列表（长期有效）
+  staticTokens: [
+    'hiclaw-log-search-default-token-2026',
+  ],
 };
 
 // 已认证的会话（内存存储）
@@ -72,6 +78,26 @@ function verifyToken(token) {
     return { valid: false, error: 'Token required' };
   }
 
+  // v2.2: 先检查静态 Token
+  if (AUTH_CONFIG.staticTokens.includes(token)) {
+    // 静态 Token 有效，创建会话
+    const sessionId = crypto.randomBytes(32).toString('hex');
+    const session = {
+      createdAt: Date.now(),
+      expiresAt: Date.now() + AUTH_CONFIG.sessionTTL,
+      type: 'static',
+    };
+    sessions.set(sessionId, session);
+    
+    return { 
+      valid: true, 
+      sessionId, 
+      message: 'Static token verified',
+      type: 'static',
+      expiresAt: session.expiresAt,
+    };
+  }
+
   // 检查是否已经是已认证的会话
   const existingSession = sessions.get(token);
   if (existingSession && existingSession.expiresAt > Date.now()) {
@@ -84,7 +110,7 @@ function verifyToken(token) {
     const content = fs.readFileSync(AUTH_CONFIG.tokenFile, 'utf-8');
     tokenData = JSON.parse(content);
   } catch (e) {
-    return { valid: false, error: 'Token file not found or invalid' };
+    return { valid: false, error: 'Invalid token' };
   }
 
   // 验证密钥
@@ -107,6 +133,7 @@ function verifyToken(token) {
     createdAt: Date.now(),
     expiresAt: Date.now() + AUTH_CONFIG.sessionTTL,
     originalToken: token,
+    type: 'dynamic',
   };
   
   sessions.set(sessionId, session);
@@ -120,13 +147,14 @@ function verifyToken(token) {
     valid: true, 
     sessionId, 
     message: 'Authentication successful',
+    type: 'dynamic',
     expiresAt: session.expiresAt,
   };
 }
 
 /**
  * 验证会话
- * @param {string} sessionId - 会话 ID
+ * @param {string} sessionId - 会话 ID 或 token
  * @returns {boolean}
  */
 function validateSession(sessionId) {
@@ -136,6 +164,11 @@ function validateSession(sessionId) {
 
   if (!sessionId) {
     return false;
+  }
+
+  // v2.2: 先检查是否是静态 Token
+  if (AUTH_CONFIG.staticTokens.includes(sessionId)) {
+    return true;
   }
 
   const session = sessions.get(sessionId);

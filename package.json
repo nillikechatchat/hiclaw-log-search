@@ -1,6 +1,6 @@
 {
   "name": "hiclaw-log-search",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "description": "HiClaw Log Search Service - Log query, monitoring, and system management with upgrade/uninstall",
   "main": "skill/server.js",
   "scripts": {

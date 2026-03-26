@@ -5,11 +5,6 @@
 const url = require('url');
 const { generateToken, verifyToken, getAuthStatus, clearAllSessions } = require('../services/authService');
 
-// 静态 token（兼容旧版）
-const STATIC_TOKENS = new Set([
-  process.env.HICLAW_AUTH_TOKEN || 'hiclaw-log-search-default-token-2026'
-].filter(Boolean));
-
 /**
  * 生成一次性密钥（仅限本地调用）
  */
@@ -64,17 +59,6 @@ function handleVerifyToken(req, res) {
     return;
   }
 
-  // 首先检查静态 token
-  if (STATIC_TOKENS.has(token)) {
-    res.end(JSON.stringify({
-      success: true,
-      message: 'Static token verified',
-      type: 'static',
-    }));
-    return;
-  }
-
-  // 检查动态 token
   const result = verifyToken(token);
   
   if (result.valid) {
@@ -89,7 +73,6 @@ function handleVerifyToken(req, res) {
       success: true,
       message: result.message,
       sessionId: result.sessionId,
-      type: 'session',
       expiresAt: result.expiresAt ? new Date(result.expiresAt).toISOString() : null,
     }));
   } else {

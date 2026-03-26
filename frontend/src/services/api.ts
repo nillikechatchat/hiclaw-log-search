@@ -246,22 +246,48 @@ export async function getWorkers(): Promise<{ workers: WorkerStatus[] }> {
 
 // ========== 系统管理 API ==========
 
-// 获取版本信息
-export async function getVersion(): Promise<{ version: string; installDir: string; nodeVersion: string }> {
-  return request(`${API_BASE}/system/version`);
+// 版本信息类型
+export interface VersionInfo {
+  version: string;
+  buildDate?: string;
+  gitCommit?: string;
+}
+
+// 更新检查结果
+export interface UpdateCheckResult {
+  current: string;
+  latest: string;
+  hasUpdate: boolean;
+  releaseNotes?: string;
+  releaseUrl?: string;
+}
+
+// 操作结果
+export interface OperationResult {
+  success: boolean;
+  message: string;
+}
+
+// 获取当前版本
+export async function getVersion(): Promise<VersionInfo> {
+  return request<VersionInfo>(`${API_BASE}/system/version`);
 }
 
 // 检查更新
-export async function checkUpdate(): Promise<{ current: string; latest: string; hasUpdate: boolean; releaseNotes?: string }> {
-  return request(`${API_BASE}/system/upgrade/check`);
+export async function checkUpdate(): Promise<UpdateCheckResult> {
+  return request<UpdateCheckResult>(`${API_BASE}/system/upgrade/check`);
 }
 
 // 执行升级
-export async function upgrade(): Promise<{ success: boolean; message: string }> {
-  return request(`${API_BASE}/system/upgrade/execute`, { method: 'POST' });
+export async function upgrade(): Promise<OperationResult> {
+  return request<OperationResult>(`${API_BASE}/system/upgrade/execute`, {
+    method: 'POST',
+  });
 }
 
 // 执行卸载
-export async function uninstall(confirm: string): Promise<{ success: boolean; message: string }> {
-  return request(`${API_BASE}/system/uninstall?confirm=${encodeURIComponent(confirm)}`);
+export async function uninstall(): Promise<OperationResult> {
+  return request<OperationResult>(`${API_BASE}/system/uninstall`, {
+    method: 'POST',
+  });
 }

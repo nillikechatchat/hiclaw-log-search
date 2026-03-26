@@ -73,32 +73,6 @@ const routes = {
   },
 };
 
-// 静态 token（兼容旧版）
-const STATIC_TOKENS = new Set([
-  process.env.HICLAW_AUTH_TOKEN || 'hiclaw-log-search-default-token-2026'
-].filter(Boolean));
-
-/**
- * 验证认证
- */
-function verifyAuth(req) {
-  if (!AUTH_CONFIG.enabled) {
-    return true;
-  }
-
-  const sessionId = req.headers['x-session-id'] || 
-                    req.headers['authorization']?.replace('Bearer ', '') ||
-                    parseCookie(req.headers.cookie || '')['session_id'];
-  
-  // 检查静态 token
-  if (STATIC_TOKENS.has(sessionId)) {
-    return true;
-  }
-  
-  // 检查会话
-  return validateSession(sessionId);
-}
-
 /**
  * 无需认证的路由
  */
@@ -147,7 +121,11 @@ const server = http.createServer((req, res) => {
 
   // 检查是否需要认证
   if (AUTH_CONFIG.enabled && !publicRoutes.includes(pathname)) {
-    if (!verifyAuth(req)) {
+    const sessionId = req.headers['x-session-id'] || 
+                      req.headers['authorization']?.replace('Bearer ', '') ||
+                      parseCookie(req.headers.cookie || '')['session_id'];
+    
+    if (!validateSession(sessionId)) {
       res.statusCode = 401;
       res.end(JSON.stringify({ 
         error: 'Unauthorized', 

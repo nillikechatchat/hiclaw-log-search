@@ -93,7 +93,7 @@ export default function SystemManager() {
     toast.loading('正在卸载...', { id: 'uninstall' });
     
     try {
-      const result = await uninstall('UNINSTALL-CONFIRM');
+      const result = await uninstall();
       if (result.success) {
         toast.success('卸载成功！', { id: 'uninstall' });
         setShowUninstallConfirm(false);

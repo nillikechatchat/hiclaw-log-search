@@ -14,11 +14,11 @@ export default defineConfig({
     port: 3000,
     proxy: {
       '/log-search/api': {
-        target: 'http://127.0.0.1:19996',
+        target: 'http://127.0.0.1:19995',
         changeOrigin: true,
       },
       '/log-search/ws': {
-        target: 'ws://127.0.0.1:19996',
+        target: 'ws://127.0.0.1:19995',
         ws: true,
       },
     },

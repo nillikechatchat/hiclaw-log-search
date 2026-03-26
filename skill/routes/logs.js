@@ -85,8 +85,71 @@ function handleExport(req, res) {
   res.end(result.data);
 }
 
+/**
+ * 处理日志删除请求
+ */
+function handleDeleteLogs(req, res) {
+  const parsedUrl = url.parse(req.url, true);
+  const query = parsedUrl.query;
+
+  const component = query.component;
+
+  if (!component) {
+    res.statusCode = 400;
+    res.end(JSON.stringify({
+      error: 'Component required',
+      message: 'Please specify a component to delete logs'
+    }));
+    return;
+  }
+
+  const fs = require('fs');
+  const { COMPONENTS } = require('../config');
+
+  const componentConfig = COMPONENTS[component];
+  if (!componentConfig) {
+    res.statusCode = 404;
+    res.end(JSON.stringify({
+      error: 'Component not found',
+      message: `Unknown component: ${component}`
+    }));
+    return;
+  }
+
+  const logFile = componentConfig.file;
+
+  try {
+    // 检查文件是否存在
+    if (!fs.existsSync(logFile)) {
+      res.statusCode = 404;
+      res.end(JSON.stringify({
+        error: 'Log file not found',
+        message: `Log file does not exist: ${logFile}`
+      }));
+      return;
+    }
+
+    // 清空日志文件（而不是删除）
+    fs.truncateSync(logFile, 0);
+
+    res.end(JSON.stringify({
+      success: true,
+      message: `Log file cleared: ${logFile}`,
+      component,
+      timestamp: new Date().toISOString()
+    }));
+  } catch (e) {
+    res.statusCode = 500;
+    res.end(JSON.stringify({
+      error: 'Failed to clear log file',
+      message: e.message
+    }));
+  }
+}
+
 module.exports = {
   handleLogs,
   handleContext,
-  handleExport
+  handleExport,
+  handleDeleteLogs
 };

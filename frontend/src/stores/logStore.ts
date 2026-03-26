@@ -42,6 +42,7 @@ interface LogStore {
   
   // 认证状态
   isAuthenticated: boolean;
+  authToken: string | null;
   
   // Actions
   setLogs: (logs: LogEntry[]) => void;
@@ -56,7 +57,7 @@ interface LogStore {
   setError: (error: string | null) => void;
   setHasMore: (hasMore: boolean) => void;
   setPage: (page: number) => void;
-  setAuthenticated: (authenticated: boolean) => void;
+  setAuthenticated: (authenticated: boolean, token?: string) => void;
   logout: () => void;
 }
 
@@ -71,6 +72,7 @@ export const useLogStore = create<LogStore>((set) => ({
   hasMore: false,
   page: 1,
   isAuthenticated: false,
+  authToken: null,
   
   setLogs: (logs) => set({ logs }),
   appendLogs: (logs) => set((state) => ({ logs: [...state.logs, ...logs] })),
@@ -84,8 +86,16 @@ export const useLogStore = create<LogStore>((set) => ({
   setError: (error) => set({ error }),
   setHasMore: (hasMore) => set({ hasMore }),
   setPage: (page) => set({ page }),
-  setAuthenticated: (isAuthenticated) => set({ isAuthenticated }),
-  logout: () => set({ isAuthenticated: false }),
+  setAuthenticated: (isAuthenticated, token) => {
+    if (isAuthenticated && token) {
+      localStorage.setItem('log-auth-token', token);
+    }
+    set({ isAuthenticated, authToken: token || null });
+  },
+  logout: () => {
+    localStorage.removeItem('log-auth-token');
+    set({ isAuthenticated: false, authToken: null });
+  },
 }));
 
 // 搜索历史存储
