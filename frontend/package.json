@@ -1,6 +1,6 @@
 {
   "name": "hiclaw-log-analyzer",
-  "version": "2.3.0",
+  "version": "2.3.1",
   "description": "HiClaw Log Analyzer v2.1 - Token authentication, Dashboard with Worker status, log management",
   "type": "module",
   "scripts": {

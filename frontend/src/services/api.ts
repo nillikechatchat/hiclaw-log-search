@@ -255,11 +255,12 @@ export interface VersionInfo {
 
 // 更新检查结果
 export interface UpdateCheckResult {
-  current: string;
-  latest: string;
-  hasUpdate: boolean;
+  currentVersion: string;
+  latestVersion: string;
+  hasUpgrade: boolean;
   releaseNotes?: string;
   releaseUrl?: string;
+  error?: string;
 }
 
 // 操作结果

@@ -15,17 +15,21 @@ export default function LogStream() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);
   const [expandedLog, setExpandedLog] = useState<string | null>(null);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  // 加载日志函数
-  const loadLogsRef = useRef<() => Promise<void>>();
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
   
-  loadLogsRef.current = async () => {
+  // 使用 ref 保存最新的 filter
+  const filterRef = useRef(filter);
+  filterRef.current = filter;
+
+  // 加载日志函数 - 直接定义，不使用 ref
+  const loadLogs = useCallback(async () => {
     if (!selectedComponent) return;
     
     setLoading(true);
     try {
-      const data = await getLogs({ ...filter, component: selectedComponent }, preferences.maxLines);
+      // 使用 filterRef.current 获取最新值
+      const currentFilter = filterRef.current;
+      const data = await getLogs({ ...currentFilter, component: selectedComponent }, preferences.maxLines);
       setLogs(data.logs.map((log: LogEntry) => ({ ...log, id: log.id || generateId() })));
       toast.success(`加载 ${data.total} 条日志`);
     } catch (error) {
@@ -33,11 +37,7 @@ export default function LogStream() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const loadLogs = useCallback(() => {
-    loadLogsRef.current?.();
-  }, []);
+  }, [selectedComponent, preferences.maxLines, setLogs, setLoading]);
 
   // ========== 日志加载触发 ==========
   
@@ -48,13 +48,12 @@ export default function LogStream() {
     }
   }, [selectedComponent, loadLogs]);
 
-  // 2. 过滤器变化时重新加载
+  // 2. 过滤器变化时重新加载 - 直接依赖 filter 对象
   useEffect(() => {
     if (selectedComponent) {
       loadLogs();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filter.level, filter.keyword, filter.regex]);
+  }, [filter.level, filter.keyword, filter.regex, selectedComponent, loadLogs]);
 
   // ========== 自动刷新（轮询模式）==========
   

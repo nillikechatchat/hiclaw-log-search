@@ -27,8 +27,11 @@ function readLogFile(componentId, options = {}) {
     const stat = fs.statSync(filepath);
     const hasChanged = fileStateCache.hasChanged(filepath, stat);
     
-    // 检查缓存
-    const cacheKey = `${componentId}:${stat.size}:${stat.mtime.getTime()}`;
+    // 构建缓存键 - 包含过滤条件
+    const { maxLines = 1000, level = 'ALL', search = '', regex = '', startTime = '', endTime = '' } = options;
+    const filterKey = `${level}:${search}:${regex}:${startTime}:${endTime}`;
+    const cacheKey = `${componentId}:${stat.size}:${stat.mtime.getTime()}:${maxLines}:${filterKey}`;
+    
     if (!hasChanged && !options.forceRefresh) {
       const cached = logCache.get(cacheKey);
       if (cached) {
@@ -47,7 +50,6 @@ function readLogFile(componentId, options = {}) {
     const content = fs.readFileSync(filepath, 'utf-8');
     
     // 解析日志
-    const { maxLines = 1000, level, search, regex, startTime, endTime } = options;
     const logs = parseLogs(content, { maxLines, level, search, regex, startTime, endTime });
 
     const result = {
